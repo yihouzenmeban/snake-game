@@ -3,6 +3,8 @@
 ## Project Structure & Module Organization
 本仓库是一个基于 Vite、React 和 TypeScript 的小游戏项目。应用代码位于 `src/`：`main.tsx` 负责挂载 React，`App.tsx` 包含主要游戏逻辑，`index.css` 存放全局样式。根目录配置文件包括 `vite.config.ts`、`tsconfig.json` 和 `package.json`。构建产物输出到 `dist/`，不要手动修改。
 
+凡是影响开发流程、测试方式、构建命令、提交规范或项目结构的改动，提交时必须同步更新 `AGENTS.md`。
+
 ## Build, Test, and Development Commands
 请统一使用 `pnpm`，版本已在 `package.json` 中声明。
 
