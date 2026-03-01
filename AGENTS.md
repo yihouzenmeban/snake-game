@@ -14,7 +14,7 @@
 - `pnpm test`：运行基于 Vitest 的逻辑与交互测试，并强制业务源码覆盖率四项达到 `100%`。
 - `pnpm preview`：本地预览构建后的产物。
 
-仓库启用了 `pre-commit` hook；每次 `git commit` 前都会自动执行 `pnpm test`，失败时不得绕过，除非用户明确要求。提交 PR 前至少运行一次 `pnpm build`；涉及游戏逻辑修改时，交付说明里要明确写出测试结果。
+仓库启用了 `pre-commit` hook；每次 `git commit` 前都会自动执行 `pnpm test`，失败时不得绕过，除非用户明确要求。仓库还启用了 GitHub Pages 自动发布：推送到 `main` 后，GitHub Actions 会执行 `pnpm test`、`pnpm build` 并发布到 Pages。提交 PR 前至少运行一次 `pnpm build`；涉及游戏逻辑修改时，交付说明里要明确写出测试结果。
 
 ## 编码风格与命名约定
 遵循现有的 TypeScript 优先风格：2 空格缩进，语句保留分号。React 组件使用 `PascalCase`，函数和变量使用 `camelCase`，模块级常量使用 `UPPER_SNAKE_CASE`。相关逻辑尽量放在使用位置附近，优先写明确类型；新增样式类名时保持当前 CSS 命名方式，如 `panel__header`、`score-card--secondary`。
@@ -26,4 +26,4 @@
 最近的提交历史采用简短的 Conventional Commits 风格。请继续使用 `feat:`、`fix:`、`refactor:`、`docs:` 等前缀，并配上中文摘要，例如 `feat: 增加暂停和最高分`。PR 需要说明用户可见的改动、列出验证步骤；如果涉及界面变化，请附截图或简短录屏。
 
 ## 安全与配置提示
-不要提交任何密钥、`.env` 内容或 `dist/` 下的生成文件。像 `localStorage` 这类浏览器侧状态键名应尽量保持稳定，除非这次改动明确包含迁移逻辑。
+不要提交任何密钥、`.env` 内容或 `dist/` 下的生成文件。像 `localStorage` 这类浏览器侧状态键名应尽量保持稳定，除非这次改动明确包含迁移逻辑。若仓库名、Pages 地址或部署方式变化，必须同步更新 `vite.config.ts` 中的 `base`、GitHub Actions workflow、`README.md` 和 `AGENTS.md`。

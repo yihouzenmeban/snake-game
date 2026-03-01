@@ -34,6 +34,12 @@ pnpm preview
 - `pnpm test`：运行全部测试并检查 100% 覆盖率
 - `pnpm preview`：预览构建结果
 
+## 发布
+
+- 推送到 `main` 后，会通过 GitHub Actions 自动发布到 GitHub Pages
+- 页面地址：`https://yihouzenmeban.github.io/snake-game/`
+- 首次启用时，需要在 GitHub 仓库的 `Settings -> Pages` 中把来源设为 `GitHub Actions`
+
 ## 操作说明
 
 - 方向键 / `WASD`：控制移动方向
@@ -55,7 +61,9 @@ pnpm preview
 ```text
 src/
   App.tsx       游戏逻辑与界面
-  App.test.ts   逻辑测试
+  App.test.tsx  组件交互测试
+  game.ts       游戏纯逻辑
+  game.test.ts  纯逻辑测试
   index.css     样式
   main.tsx      入口
 ```
@@ -63,6 +71,7 @@ src/
 ## 验证
 
 - `git commit`：会先自动执行 `pnpm test`
+- `git push`：会触发 GitHub Actions 自动测试、构建和发布
 - `pnpm test`：覆盖游戏逻辑和关键交互，并强制 100% 覆盖率
 - `pnpm build`：检查类型并构建产物
 
