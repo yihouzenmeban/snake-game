@@ -15,9 +15,11 @@ const INITIAL_SNAKE: Cell[] = [
   { x: 6, y: 8 },
 ];
 const INITIAL_DIRECTION: Direction = 'right';
-const BASE_SPEED_MS = 160;
-const MIN_SPEED_MS = 70;
-const SPEED_STEP_MS = 6;
+const BASE_SPEED_MS = 176;
+const MIN_SPEED_MS = 92;
+const SPEED_STEP_MS = 8;
+const SPEED_UP_EVERY = 2;
+const SWIPE_THRESHOLD_PX = 18;
 const HIGH_SCORE_KEY = 'snake-high-score';
 
 function getRandomFood(snake: Cell[]): Cell {
@@ -71,6 +73,11 @@ function createInitialState() {
   };
 }
 
+function getSpeedByScore(score: number): number {
+  const speedBoost = Math.floor(score / SPEED_UP_EVERY) * SPEED_STEP_MS;
+  return Math.max(MIN_SPEED_MS, BASE_SPEED_MS - speedBoost);
+}
+
 function App() {
   const initialState = useMemo(() => createInitialState(), []);
   const [snake, setSnake] = useState<Cell[]>(initialState.snake);
@@ -80,7 +87,8 @@ function App() {
   const [status, setStatus] = useState<GameStatus>(initialState.status);
   const [highScore, setHighScore] = useState(0);
   const directionRef = useRef<Direction>(INITIAL_DIRECTION);
-  const currentSpeed = Math.max(MIN_SPEED_MS, BASE_SPEED_MS - score * SPEED_STEP_MS);
+  const touchStartRef = useRef<Cell | null>(null);
+  const currentSpeed = getSpeedByScore(score);
 
   function resetGame(nextStatus: GameStatus = 'running') {
     const nextState = createInitialState();
@@ -114,6 +122,37 @@ function App() {
     if (!isReverseDirection(directionRef.current, nextDirection)) {
       setDirection(nextDirection);
     }
+  }
+
+  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    const touch = event.changedTouches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }
+
+  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    const touchStart = touchStartRef.current;
+    if (!touchStart) {
+      return;
+    }
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - touchStart.x;
+    const deltaY = touch.clientY - touchStart.y;
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    touchStartRef.current = null;
+
+    if (Math.max(absX, absY) < SWIPE_THRESHOLD_PX) {
+      return;
+    }
+
+    if (absX > absY) {
+      updateDirection(deltaX > 0 ? 'right' : 'left');
+      return;
+    }
+
+    updateDirection(deltaY > 0 ? 'down' : 'up');
   }
 
   useEffect(() => {
@@ -277,46 +316,12 @@ function App() {
           </button>
         </div>
 
-        <div className="touch-controls">
-          <button
-            aria-label="向上移动"
-            className="touch-button touch-button--up"
-            type="button"
-            onClick={() => updateDirection('up')}
-            disabled={status !== 'running'}
-          >
-            上
-          </button>
-          <button
-            aria-label="向左移动"
-            className="touch-button touch-button--left"
-            type="button"
-            onClick={() => updateDirection('left')}
-            disabled={status !== 'running'}
-          >
-            左
-          </button>
-          <button
-            aria-label="向右移动"
-            className="touch-button touch-button--right"
-            type="button"
-            onClick={() => updateDirection('right')}
-            disabled={status !== 'running'}
-          >
-            右
-          </button>
-          <button
-            aria-label="向下移动"
-            className="touch-button touch-button--down"
-            type="button"
-            onClick={() => updateDirection('down')}
-            disabled={status !== 'running'}
-          >
-            下
-          </button>
-        </div>
-
-        <div className="board" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
+        <div
+          className="board"
+          style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
           {Array.from({ length: GRID_SIZE * GRID_SIZE }, (_, index) => {
             const x = index % GRID_SIZE;
             const y = Math.floor(index / GRID_SIZE);
@@ -340,7 +345,7 @@ function App() {
         </div>
 
         <div className="panel__footer">
-          <p>方向键、WASD 或屏幕按钮控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
+          <p>方向键、WASD 或在棋盘上滑动控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
           {status === 'paused' && <p className="status">游戏已暂停，再按一次空格、P 或点击继续。</p>}
           {status === 'gameover' && <p className="status status--danger">游戏结束，按 Enter 再来一局。</p>}
           {status === 'exited' && <p className="status">已退出游戏，按 Enter 重新开始。</p>}
