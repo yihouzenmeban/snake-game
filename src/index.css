@@ -72,6 +72,7 @@ h1 {
 
 .score-panel {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
@@ -101,6 +102,7 @@ h1 {
 
 .controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -124,6 +126,50 @@ h1 {
   color: #f4efe6;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.touch-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 84px));
+  grid-template-areas:
+    ". up ."
+    "left . right"
+    ". down .";
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.touch-button {
+  min-height: 54px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f4efe6;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  font-weight: 700;
+  touch-action: manipulation;
+}
+
+.touch-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.touch-button--up {
+  grid-area: up;
+}
+
+.touch-button--left {
+  grid-area: left;
+}
+
+.touch-button--right {
+  grid-area: right;
+}
+
+.touch-button--down {
+  grid-area: down;
 }
 
 .board {
@@ -188,15 +234,14 @@ h1 {
 
   .score-panel {
     width: 100%;
-    flex-wrap: wrap;
   }
 
   .score-card {
     text-align: left;
   }
 
-  .controls {
-    flex-wrap: wrap;
+  .touch-controls {
+    grid-template-columns: repeat(3, minmax(0, 72px));
   }
 
   .board {

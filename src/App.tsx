@@ -15,7 +15,9 @@ const INITIAL_SNAKE: Cell[] = [
   { x: 6, y: 8 },
 ];
 const INITIAL_DIRECTION: Direction = 'right';
-const SPEED_MS = 140;
+const BASE_SPEED_MS = 160;
+const MIN_SPEED_MS = 70;
+const SPEED_STEP_MS = 6;
 const HIGH_SCORE_KEY = 'snake-high-score';
 
 function getRandomFood(snake: Cell[]): Cell {
@@ -78,6 +80,7 @@ function App() {
   const [status, setStatus] = useState<GameStatus>(initialState.status);
   const [highScore, setHighScore] = useState(0);
   const directionRef = useRef<Direction>(INITIAL_DIRECTION);
+  const currentSpeed = Math.max(MIN_SPEED_MS, BASE_SPEED_MS - score * SPEED_STEP_MS);
 
   function resetGame(nextStatus: GameStatus = 'running') {
     const nextState = createInitialState();
@@ -87,6 +90,30 @@ function App() {
     directionRef.current = nextState.direction;
     setScore(nextState.score);
     setStatus(nextStatus);
+  }
+
+  function togglePause() {
+    setStatus((currentStatus) => {
+      if (currentStatus === 'running') {
+        return 'paused';
+      }
+
+      if (currentStatus === 'paused') {
+        return 'running';
+      }
+
+      return currentStatus;
+    });
+  }
+
+  function updateDirection(nextDirection: Direction) {
+    if (status !== 'running') {
+      return;
+    }
+
+    if (!isReverseDirection(directionRef.current, nextDirection)) {
+      setDirection(nextDirection);
+    }
   }
 
   useEffect(() => {
@@ -128,17 +155,7 @@ function App() {
 
       if ((event.key === ' ' || event.key.toLowerCase() === 'p') && status !== 'gameover') {
         event.preventDefault();
-        setStatus((currentStatus) => {
-          if (currentStatus === 'running') {
-            return 'paused';
-          }
-
-          if (currentStatus === 'paused') {
-            return 'running';
-          }
-
-          return currentStatus;
-        });
+        togglePause();
         return;
       }
 
@@ -163,10 +180,7 @@ function App() {
       }
 
       event.preventDefault();
-
-      if (!isReverseDirection(directionRef.current, nextDirection)) {
-        setDirection(nextDirection);
-      }
+      updateDirection(nextDirection);
     }
 
     window.addEventListener('keydown', handleKeyDown);
@@ -209,10 +223,10 @@ function App() {
         nextSnake.pop();
         return nextSnake;
       });
-    }, SPEED_MS);
+    }, currentSpeed);
 
     return () => window.clearInterval(timer);
-  }, [food, status]);
+  }, [currentSpeed, food, status]);
 
   const cellMap = useMemo(() => {
     const map = new Map<string, 'snake' | 'food'>();
@@ -242,6 +256,10 @@ function App() {
               <span>最高分</span>
               <strong>{highScore}</strong>
             </div>
+            <div className="score-card score-card--secondary">
+              <span>速度</span>
+              <strong>{Math.round((BASE_SPEED_MS - currentSpeed) / SPEED_STEP_MS) + 1}</strong>
+            </div>
           </div>
         </div>
 
@@ -249,25 +267,52 @@ function App() {
           <button
             className="control-button"
             type="button"
-            onClick={() => {
-              setStatus((currentStatus) => {
-                if (currentStatus === 'running') {
-                  return 'paused';
-                }
-
-                if (currentStatus === 'paused') {
-                  return 'running';
-                }
-
-                return currentStatus;
-              });
-            }}
+            onClick={togglePause}
             disabled={status === 'gameover' || status === 'exited'}
           >
             {status === 'paused' ? '继续' : '暂停'}
           </button>
           <button className="control-button control-button--ghost" type="button" onClick={() => resetGame()}>
             重新开始
+          </button>
+        </div>
+
+        <div className="touch-controls">
+          <button
+            aria-label="向上移动"
+            className="touch-button touch-button--up"
+            type="button"
+            onClick={() => updateDirection('up')}
+            disabled={status !== 'running'}
+          >
+            上
+          </button>
+          <button
+            aria-label="向左移动"
+            className="touch-button touch-button--left"
+            type="button"
+            onClick={() => updateDirection('left')}
+            disabled={status !== 'running'}
+          >
+            左
+          </button>
+          <button
+            aria-label="向右移动"
+            className="touch-button touch-button--right"
+            type="button"
+            onClick={() => updateDirection('right')}
+            disabled={status !== 'running'}
+          >
+            右
+          </button>
+          <button
+            aria-label="向下移动"
+            className="touch-button touch-button--down"
+            type="button"
+            onClick={() => updateDirection('down')}
+            disabled={status !== 'running'}
+          >
+            下
           </button>
         </div>
 
@@ -295,7 +340,7 @@ function App() {
         </div>
 
         <div className="panel__footer">
-          <p>方向键或 WASD 控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
+          <p>方向键、WASD 或屏幕按钮控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
           {status === 'paused' && <p className="status">游戏已暂停，再按一次空格、P 或点击继续。</p>}
           {status === 'gameover' && <p className="status status--danger">游戏结束，按 Enter 再来一局。</p>}
           {status === 'exited' && <p className="status">已退出游戏，按 Enter 重新开始。</p>}
