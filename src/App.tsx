@@ -6,7 +6,7 @@ type Cell = {
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
-type GameStatus = 'running' | 'gameover' | 'exited';
+type GameStatus = 'running' | 'paused' | 'gameover' | 'exited';
 
 const GRID_SIZE = 16;
 const INITIAL_SNAKE: Cell[] = [
@@ -16,6 +16,7 @@ const INITIAL_SNAKE: Cell[] = [
 ];
 const INITIAL_DIRECTION: Direction = 'right';
 const SPEED_MS = 140;
+const HIGH_SCORE_KEY = 'snake-high-score';
 
 function getRandomFood(snake: Cell[]): Cell {
   const occupied = new Set(snake.map((segment) => `${segment.x},${segment.y}`));
@@ -58,17 +59,60 @@ function isReverseDirection(current: Direction, next: Direction): boolean {
   );
 }
 
+function createInitialState() {
+  return {
+    snake: INITIAL_SNAKE,
+    food: getRandomFood(INITIAL_SNAKE),
+    direction: INITIAL_DIRECTION,
+    score: 0,
+    status: 'running' as GameStatus,
+  };
+}
+
 function App() {
-  const [snake, setSnake] = useState<Cell[]>(INITIAL_SNAKE);
-  const [food, setFood] = useState<Cell>(() => getRandomFood(INITIAL_SNAKE));
-  const [direction, setDirection] = useState<Direction>(INITIAL_DIRECTION);
-  const [score, setScore] = useState(0);
-  const [status, setStatus] = useState<GameStatus>('running');
+  const initialState = useMemo(() => createInitialState(), []);
+  const [snake, setSnake] = useState<Cell[]>(initialState.snake);
+  const [food, setFood] = useState<Cell>(initialState.food);
+  const [direction, setDirection] = useState<Direction>(initialState.direction);
+  const [score, setScore] = useState(initialState.score);
+  const [status, setStatus] = useState<GameStatus>(initialState.status);
+  const [highScore, setHighScore] = useState(0);
   const directionRef = useRef<Direction>(INITIAL_DIRECTION);
+
+  function resetGame(nextStatus: GameStatus = 'running') {
+    const nextState = createInitialState();
+    setSnake(nextState.snake);
+    setFood(nextState.food);
+    setDirection(nextState.direction);
+    directionRef.current = nextState.direction;
+    setScore(nextState.score);
+    setStatus(nextStatus);
+  }
 
   useEffect(() => {
     directionRef.current = direction;
   }, [direction]);
+
+  useEffect(() => {
+    const savedHighScore = window.localStorage.getItem(HIGH_SCORE_KEY);
+    if (!savedHighScore) {
+      return;
+    }
+
+    const parsedHighScore = Number.parseInt(savedHighScore, 10);
+    if (!Number.isNaN(parsedHighScore)) {
+      setHighScore(parsedHighScore);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (score <= highScore) {
+      return;
+    }
+
+    setHighScore(score);
+    window.localStorage.setItem(HIGH_SCORE_KEY, String(score));
+  }, [highScore, score]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
@@ -77,13 +121,24 @@ function App() {
         return;
       }
 
-      if (event.key === 'Enter' && status !== 'running') {
-        setSnake(INITIAL_SNAKE);
-        setFood(getRandomFood(INITIAL_SNAKE));
-        setDirection(INITIAL_DIRECTION);
-        directionRef.current = INITIAL_DIRECTION;
-        setScore(0);
-        setStatus('running');
+      if (event.key === 'Enter') {
+        resetGame();
+        return;
+      }
+
+      if ((event.key === ' ' || event.key.toLowerCase() === 'p') && status !== 'gameover') {
+        event.preventDefault();
+        setStatus((currentStatus) => {
+          if (currentStatus === 'running') {
+            return 'paused';
+          }
+
+          if (currentStatus === 'paused') {
+            return 'running';
+          }
+
+          return currentStatus;
+        });
         return;
       }
 
@@ -178,10 +233,42 @@ function App() {
             <p className="eyebrow">React + Vite + TypeScript</p>
             <h1>贪吃蛇</h1>
           </div>
-          <div className="score-card">
-            <span>分数</span>
-            <strong>{score}</strong>
+          <div className="score-panel">
+            <div className="score-card">
+              <span>分数</span>
+              <strong>{score}</strong>
+            </div>
+            <div className="score-card score-card--secondary">
+              <span>最高分</span>
+              <strong>{highScore}</strong>
+            </div>
           </div>
+        </div>
+
+        <div className="controls">
+          <button
+            className="control-button"
+            type="button"
+            onClick={() => {
+              setStatus((currentStatus) => {
+                if (currentStatus === 'running') {
+                  return 'paused';
+                }
+
+                if (currentStatus === 'paused') {
+                  return 'running';
+                }
+
+                return currentStatus;
+              });
+            }}
+            disabled={status === 'gameover' || status === 'exited'}
+          >
+            {status === 'paused' ? '继续' : '暂停'}
+          </button>
+          <button className="control-button control-button--ghost" type="button" onClick={() => resetGame()}>
+            重新开始
+          </button>
         </div>
 
         <div className="board" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}>
@@ -208,7 +295,8 @@ function App() {
         </div>
 
         <div className="panel__footer">
-          <p>方向键或 WASD 控制移动，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
+          <p>方向键或 WASD 控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
+          {status === 'paused' && <p className="status">游戏已暂停，再按一次空格、P 或点击继续。</p>}
           {status === 'gameover' && <p className="status status--danger">游戏结束，按 Enter 再来一局。</p>}
           {status === 'exited' && <p className="status">已退出游戏，按 Enter 重新开始。</p>}
         </div>
