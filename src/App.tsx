@@ -1,11 +1,12 @@
+import type { TouchEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-type Cell = {
+export type Cell = {
   x: number;
   y: number;
 };
 
-type Direction = 'up' | 'down' | 'left' | 'right';
+export type Direction = 'up' | 'down' | 'left' | 'right';
 type GameStatus = 'running' | 'paused' | 'gameover' | 'exited';
 
 const GRID_SIZE = 16;
@@ -73,9 +74,26 @@ function createInitialState() {
   };
 }
 
-function getSpeedByScore(score: number): number {
+export function getSpeedByScore(score: number): number {
   const speedBoost = Math.floor(score / SPEED_UP_EVERY) * SPEED_STEP_MS;
   return Math.max(MIN_SPEED_MS, BASE_SPEED_MS - speedBoost);
+}
+
+export function getSwipeDirection(start: Cell, end: Cell, threshold = SWIPE_THRESHOLD_PX): Direction | null {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const absX = Math.abs(deltaX);
+  const absY = Math.abs(deltaY);
+
+  if (Math.max(absX, absY) < threshold) {
+    return null;
+  }
+
+  if (absX > absY) {
+    return deltaX > 0 ? 'right' : 'left';
+  }
+
+  return deltaY > 0 ? 'down' : 'up';
 }
 
 function App() {
@@ -124,35 +142,23 @@ function App() {
     }
   }
 
-  function handleTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchStart(event: TouchEvent<HTMLDivElement>) {
     const touch = event.changedTouches[0];
     touchStartRef.current = { x: touch.clientX, y: touch.clientY };
   }
 
-  function handleTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+  function handleTouchEnd(event: TouchEvent<HTMLDivElement>) {
     const touchStart = touchStartRef.current;
     if (!touchStart) {
       return;
     }
 
     const touch = event.changedTouches[0];
-    const deltaX = touch.clientX - touchStart.x;
-    const deltaY = touch.clientY - touchStart.y;
-    const absX = Math.abs(deltaX);
-    const absY = Math.abs(deltaY);
-
     touchStartRef.current = null;
-
-    if (Math.max(absX, absY) < SWIPE_THRESHOLD_PX) {
-      return;
+    const swipeDirection = getSwipeDirection(touchStart, { x: touch.clientX, y: touch.clientY });
+    if (swipeDirection) {
+      updateDirection(swipeDirection);
     }
-
-    if (absX > absY) {
-      updateDirection(deltaX > 0 ? 'right' : 'left');
-      return;
-    }
-
-    updateDirection(deltaY > 0 ? 'down' : 'up');
   }
 
   useEffect(() => {
