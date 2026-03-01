@@ -1,100 +1,22 @@
 import type { TouchEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-
-export type Cell = {
-  x: number;
-  y: number;
-};
-
-export type Direction = 'up' | 'down' | 'left' | 'right';
-type GameStatus = 'running' | 'paused' | 'gameover' | 'exited';
-
-const GRID_SIZE = 16;
-const INITIAL_SNAKE: Cell[] = [
-  { x: 8, y: 8 },
-  { x: 7, y: 8 },
-  { x: 6, y: 8 },
-];
-const INITIAL_DIRECTION: Direction = 'right';
-const BASE_SPEED_MS = 176;
-const MIN_SPEED_MS = 92;
-const SPEED_STEP_MS = 8;
-const SPEED_UP_EVERY = 2;
-const SWIPE_THRESHOLD_PX = 18;
-const HIGH_SCORE_KEY = 'snake-high-score';
-
-function getRandomFood(snake: Cell[]): Cell {
-  const occupied = new Set(snake.map((segment) => `${segment.x},${segment.y}`));
-  const freeCells: Cell[] = [];
-
-  for (let y = 0; y < GRID_SIZE; y += 1) {
-    for (let x = 0; x < GRID_SIZE; x += 1) {
-      if (!occupied.has(`${x},${y}`)) {
-        freeCells.push({ x, y });
-      }
-    }
-  }
-
-  if (freeCells.length === 0) {
-    return snake[0];
-  }
-
-  return freeCells[Math.floor(Math.random() * freeCells.length)];
-}
-
-function getNextHead(head: Cell, direction: Direction): Cell {
-  switch (direction) {
-    case 'up':
-      return { x: head.x, y: head.y - 1 };
-    case 'down':
-      return { x: head.x, y: head.y + 1 };
-    case 'left':
-      return { x: head.x - 1, y: head.y };
-    case 'right':
-      return { x: head.x + 1, y: head.y };
-  }
-}
-
-function isReverseDirection(current: Direction, next: Direction): boolean {
-  return (
-    (current === 'up' && next === 'down') ||
-    (current === 'down' && next === 'up') ||
-    (current === 'left' && next === 'right') ||
-    (current === 'right' && next === 'left')
-  );
-}
-
-function createInitialState() {
-  return {
-    snake: INITIAL_SNAKE,
-    food: getRandomFood(INITIAL_SNAKE),
-    direction: INITIAL_DIRECTION,
-    score: 0,
-    status: 'running' as GameStatus,
-  };
-}
-
-export function getSpeedByScore(score: number): number {
-  const speedBoost = Math.floor(score / SPEED_UP_EVERY) * SPEED_STEP_MS;
-  return Math.max(MIN_SPEED_MS, BASE_SPEED_MS - speedBoost);
-}
-
-export function getSwipeDirection(start: Cell, end: Cell, threshold = SWIPE_THRESHOLD_PX): Direction | null {
-  const deltaX = end.x - start.x;
-  const deltaY = end.y - start.y;
-  const absX = Math.abs(deltaX);
-  const absY = Math.abs(deltaY);
-
-  if (Math.max(absX, absY) < threshold) {
-    return null;
-  }
-
-  if (absX > absY) {
-    return deltaX > 0 ? 'right' : 'left';
-  }
-
-  return deltaY > 0 ? 'down' : 'up';
-}
+import {
+  GRID_SIZE,
+  HIGH_SCORE_KEY,
+  INITIAL_DIRECTION,
+  advanceSnake,
+  createInitialState,
+  getDirectionFromKey,
+  getRandomFood,
+  getSpeedLevel,
+  getSpeedByScore,
+  getSwipeDirection,
+  isPauseKey,
+  isReverseDirection,
+  parseHighScore,
+  shouldPersistHighScore,
+} from './game';
+import type { Cell, Direction, GameStatus } from './game';
 
 function App() {
   const initialState = useMemo(() => createInitialState(), []);
@@ -189,19 +111,11 @@ function App() {
   }, [direction]);
 
   useEffect(() => {
-    const savedHighScore = window.localStorage.getItem(HIGH_SCORE_KEY);
-    if (!savedHighScore) {
-      return;
-    }
-
-    const parsedHighScore = Number.parseInt(savedHighScore, 10);
-    if (!Number.isNaN(parsedHighScore)) {
-      setHighScore(parsedHighScore);
-    }
+    setHighScore(parseHighScore(window.localStorage.getItem(HIGH_SCORE_KEY)));
   }, []);
 
   useEffect(() => {
-    if (score <= highScore) {
+    if (!shouldPersistHighScore(score, highScore)) {
       return;
     }
 
@@ -229,28 +143,13 @@ function App() {
         return;
       }
 
-      if ((event.key === ' ' || event.key.toLowerCase() === 'p') && status !== 'gameover') {
+      if (isPauseKey(event.key) && status !== 'gameover') {
         event.preventDefault();
         togglePause();
         return;
       }
 
-      const keyMap: Record<string, Direction> = {
-        ArrowUp: 'up',
-        w: 'up',
-        W: 'up',
-        ArrowDown: 'down',
-        s: 'down',
-        S: 'down',
-        ArrowLeft: 'left',
-        a: 'left',
-        A: 'left',
-        ArrowRight: 'right',
-        d: 'right',
-        D: 'right',
-      };
-
-      const nextDirection = keyMap[event.key];
+      const nextDirection = getDirectionFromKey(event.key);
       if (!nextDirection || status !== 'running') {
         return;
       }
@@ -270,34 +169,20 @@ function App() {
 
     const timer = window.setInterval(() => {
       setSnake((currentSnake) => {
-        const nextHead = getNextHead(currentSnake[0], directionRef.current);
-        const ateFood = nextHead.x === food.x && nextHead.y === food.y;
-        const bodyToCheck = ateFood ? currentSnake : currentSnake.slice(0, -1);
-        const hitWall =
-          nextHead.x < 0 ||
-          nextHead.x >= GRID_SIZE ||
-          nextHead.y < 0 ||
-          nextHead.y >= GRID_SIZE;
+        const result = advanceSnake(currentSnake, directionRef.current, food);
 
-        const hitSelf = bodyToCheck.some(
-          (segment) => segment.x === nextHead.x && segment.y === nextHead.y,
-        );
-
-        if (hitWall || hitSelf) {
+        if (result.type === 'gameover') {
           setStatus('gameover');
           return currentSnake;
         }
 
-        const nextSnake = [nextHead, ...currentSnake];
-
-        if (ateFood) {
+        if (result.type === 'eat') {
           setScore((currentScore) => currentScore + 1);
-          setFood(getRandomFood(nextSnake));
-          return nextSnake;
+          setFood(getRandomFood(result.snake));
+          return result.snake;
         }
 
-        nextSnake.pop();
-        return nextSnake;
+        return result.snake;
       });
     }, currentSpeed);
 
@@ -329,19 +214,19 @@ function App() {
 
         <div className="panel__dashboard">
           <div className="score-panel">
-            <div className="score-card score-card--primary">
-              <span>分数</span>
-              <strong>{score}</strong>
+              <div className="score-card score-card--primary">
+                <span>分数</span>
+                <strong data-testid="score-value">{score}</strong>
+              </div>
+              <div className="score-card score-card--secondary">
+                <span>最高分</span>
+                <strong data-testid="high-score-value">{highScore}</strong>
+              </div>
+              <div className="score-card score-card--secondary">
+                <span>速度</span>
+                <strong data-testid="speed-value">{getSpeedLevel(score)}</strong>
+              </div>
             </div>
-            <div className="score-card score-card--secondary">
-              <span>最高分</span>
-              <strong>{highScore}</strong>
-            </div>
-            <div className="score-card score-card--secondary">
-              <span>速度</span>
-              <strong>{Math.round((BASE_SPEED_MS - currentSpeed) / SPEED_STEP_MS) + 1}</strong>
-            </div>
-          </div>
 
           <div className="controls">
             <button
@@ -359,7 +244,9 @@ function App() {
         </div>
 
         <div
+          aria-label="游戏棋盘"
           className={`board board--${status}`}
+          role="grid"
           style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -373,6 +260,9 @@ function App() {
             return (
               <div
                 key={`${x}-${y}`}
+                data-testid={kind === 'food' ? 'food-cell' : isHead ? 'snake-head' : undefined}
+                data-x={x}
+                data-y={y}
                 className={[
                   'cell',
                   kind === 'snake' ? 'cell--snake' : '',
