@@ -17,7 +17,7 @@ import {
   isReverseDirection,
   parseHighScore,
   shouldPersistHighScore,
-} from './game';
+} from '../src/game';
 
 describe('getSpeedByScore', () => {
   it('keeps the initial speed before reaching the next threshold', () => {

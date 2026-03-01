@@ -6,12 +6,12 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    setupFiles: ['./test/setup.ts'],
     coverage: {
       provider: 'v8',
       all: true,
       include: ['src/App.tsx', 'src/game.ts'],
-      exclude: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'src/main.tsx', 'src/test/**'],
+      exclude: ['src/main.tsx', 'test/**'],
       reporter: ['text', 'html'],
       thresholds: {
         statements: 100,

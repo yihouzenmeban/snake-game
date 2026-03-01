@@ -1,8 +1,8 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import App from './App';
-import { BASE_SPEED_MS, HIGH_SCORE_KEY } from './game';
+import App from '../src/App';
+import { BASE_SPEED_MS, HIGH_SCORE_KEY } from '../src/game';
 
 const FOOD_AHEAD_RANDOM = 0.532;
 

@@ -20,7 +20,7 @@
 遵循现有的 TypeScript 优先风格：2 空格缩进，语句保留分号。React 组件使用 `PascalCase`，函数和变量使用 `camelCase`，模块级常量使用 `UPPER_SNAKE_CASE`。相关逻辑尽量放在使用位置附近，优先写明确类型；新增样式类名时保持当前 CSS 命名方式，如 `panel__header`、`score-card--secondary`。
 
 ## 测试约定
-仓库已配置逻辑测试与组件交互测试，测试文件与功能文件相邻放置，例如 `src/game.test.ts`、`src/App.test.tsx`。新增或修改业务功能时，必须同步补齐相关测试，并保持业务源码覆盖率的 statements、branches、functions、lines 均为 `100%`。测试文件使用 `.test.ts` 或 `.test.tsx` 后缀；涉及界面体验的改动仍建议结合 `pnpm dev` 做手动试玩。
+仓库已配置逻辑测试与组件交互测试，测试文件统一放在根目录 `test/`，例如 `test/game.test.ts`、`test/App.test.tsx`，测试初始化文件位于 `test/setup.ts`。新增或修改业务功能时，必须同步补齐相关测试，并保持业务源码覆盖率的 statements、branches、functions、lines 均为 `100%`。测试文件使用 `.test.ts` 或 `.test.tsx` 后缀；涉及界面体验的改动仍建议结合 `pnpm dev` 做手动试玩。
 
 ## 提交与 Pull Request 约定
 最近的提交历史采用简短的 Conventional Commits 风格。请继续使用 `feat:`、`fix:`、`refactor:`、`docs:` 等前缀，并配上中文摘要，例如 `feat: 增加暂停和最高分`。PR 需要说明用户可见的改动、列出验证步骤；如果涉及界面变化，请附截图或简短录屏。

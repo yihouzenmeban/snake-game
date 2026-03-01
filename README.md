@@ -61,11 +61,14 @@ pnpm preview
 ```text
 src/
   App.tsx       游戏逻辑与界面
-  App.test.tsx  组件交互测试
   game.ts       游戏纯逻辑
-  game.test.ts  纯逻辑测试
   index.css     样式
   main.tsx      入口
+
+test/
+  App.test.tsx  组件交互测试
+  game.test.ts  纯逻辑测试
+  setup.ts      测试环境初始化
 ```
 
 ## 验证
