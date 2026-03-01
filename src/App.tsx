@@ -104,8 +104,10 @@ function App() {
   const [score, setScore] = useState(initialState.score);
   const [status, setStatus] = useState<GameStatus>(initialState.status);
   const [highScore, setHighScore] = useState(0);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const directionRef = useRef<Direction>(INITIAL_DIRECTION);
   const touchStartRef = useRef<Cell | null>(null);
+  const resumeStatusRef = useRef<GameStatus | null>(null);
   const currentSpeed = getSpeedByScore(score);
 
   function resetGame(nextStatus: GameStatus = 'running') {
@@ -161,6 +163,27 @@ function App() {
     }
   }
 
+  function openHelpModal() {
+    if (status === 'running') {
+      resumeStatusRef.current = 'running';
+      setStatus('paused');
+    } else {
+      resumeStatusRef.current = null;
+    }
+
+    setIsHelpOpen(true);
+  }
+
+  function closeHelpModal() {
+    setIsHelpOpen(false);
+
+    if (resumeStatusRef.current === 'running' && status === 'paused') {
+      setStatus('running');
+    }
+
+    resumeStatusRef.current = null;
+  }
+
   useEffect(() => {
     directionRef.current = direction;
   }, [direction]);
@@ -189,11 +212,19 @@ function App() {
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
+        if (isHelpOpen) {
+          closeHelpModal();
+          return;
+        }
+
         setStatus('exited');
         return;
       }
 
       if (event.key === 'Enter') {
+        if (isHelpOpen) {
+          closeHelpModal();
+        }
         resetGame();
         return;
       }
@@ -230,7 +261,7 @@ function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status]);
+  }, [isHelpOpen, status]);
 
   useEffect(() => {
     if (status !== 'running') {
@@ -286,14 +317,19 @@ function App() {
 
   return (
     <main className="app">
-      <section className="panel">
-        <div className="panel__header">
-          <div>
-            <p className="eyebrow">React + Vite + TypeScript</p>
+      <section className={`panel panel--${status}`}>
+        <div className="panel__topbar">
+          <div className="title-block">
             <h1>贪吃蛇</h1>
           </div>
+          <button className="info-button" type="button" onClick={openHelpModal}>
+            游戏说明
+          </button>
+        </div>
+
+        <div className="panel__dashboard">
           <div className="score-panel">
-            <div className="score-card">
+            <div className="score-card score-card--primary">
               <span>分数</span>
               <strong>{score}</strong>
             </div>
@@ -306,24 +342,24 @@ function App() {
               <strong>{Math.round((BASE_SPEED_MS - currentSpeed) / SPEED_STEP_MS) + 1}</strong>
             </div>
           </div>
-        </div>
 
-        <div className="controls">
-          <button
-            className="control-button"
-            type="button"
-            onClick={togglePause}
-            disabled={status === 'gameover' || status === 'exited'}
-          >
-            {status === 'paused' ? '继续' : '暂停'}
-          </button>
-          <button className="control-button control-button--ghost" type="button" onClick={() => resetGame()}>
-            重新开始
-          </button>
+          <div className="controls">
+            <button
+              className="control-button"
+              type="button"
+              onClick={togglePause}
+              disabled={status === 'gameover' || status === 'exited'}
+            >
+              {status === 'paused' ? '继续' : '暂停'}
+            </button>
+            <button className="control-button control-button--ghost" type="button" onClick={() => resetGame()}>
+              重新开始
+            </button>
+          </div>
         </div>
 
         <div
-          className="board"
+          className={`board board--${status}`}
           style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, 1fr)` }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
@@ -351,11 +387,59 @@ function App() {
         </div>
 
         <div className="panel__footer">
-          <p>方向键、WASD 或在棋盘上滑动控制移动，空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
           {status === 'paused' && <p className="status">游戏已暂停，再按一次空格、P 或点击继续。</p>}
-          {status === 'gameover' && <p className="status status--danger">游戏结束，按 Enter 再来一局。</p>}
           {status === 'exited' && <p className="status">已退出游戏，按 Enter 重新开始。</p>}
         </div>
+
+        {isHelpOpen && (
+          <div className="modal-backdrop" role="presentation" onClick={closeHelpModal}>
+            <div
+              aria-labelledby="help-modal-title"
+              aria-modal="true"
+              className="modal"
+              role="dialog"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="modal__header">
+                <div>
+                  <p className="modal__eyebrow">Game Guide</p>
+                  <h2 id="help-modal-title">游戏说明</h2>
+                </div>
+                <button className="modal__close" type="button" onClick={closeHelpModal}>
+                  关闭
+                </button>
+              </div>
+              <div className="modal__content">
+                <p>方向键、WASD 或在棋盘上滑动控制移动。</p>
+                <p>空格或 P 暂停，按 ESC 退出当前游戏，按 Enter 重新开始。</p>
+                <p>吃到食物会加分并逐渐提速，尽量刷新最高分。</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {status === 'gameover' && (
+          <div className="modal-backdrop" role="presentation">
+            <div aria-labelledby="gameover-modal-title" aria-modal="true" className="modal modal--danger" role="dialog">
+              <div className="modal__header">
+                <div>
+                  <p className="modal__eyebrow">Game Over</p>
+                  <h2 id="gameover-modal-title">这一局结束了</h2>
+                </div>
+              </div>
+              <div className="modal__content">
+                <p>本局得分：{score}</p>
+                <p>当前最高分：{highScore}</p>
+                <p>按 Enter 再来一局，或者点击下面按钮立即重开。</p>
+              </div>
+              <div className="modal__actions">
+                <button className="control-button" type="button" onClick={() => resetGame()}>
+                  再来一局
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
